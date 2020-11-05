@@ -14,6 +14,7 @@ def mixup(
     shuffled_targets = targets[indices]
 
     lam = np.random.beta(alpha, alpha)
+    # randomly overlapping the data from
     data = data * lam + shuffled_data * (1 - lam)
     targets = (targets, shuffled_targets, lam)
 

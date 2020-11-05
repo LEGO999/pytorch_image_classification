@@ -16,6 +16,7 @@ class CombinedScheduler:
                     self.schedulers.append(scheduler)
 
     def __call__(self, step):
+        # insert subject into an ordered list without sorting
         index = bisect.bisect_left(self._offsets, step) - 1
         index = max(0, min(index, len(self.schedulers) - 1))
         scheduler = self.schedulers[index]
@@ -32,6 +33,7 @@ class CombinedScheduler:
 
     @property
     def _offsets(self):
+        # np.cumsum() returns the cumulative sum of the elements along a given axis
         return np.cumsum(np.concatenate([[0], self._steps]))
 
     def multiply_steps(self, val):

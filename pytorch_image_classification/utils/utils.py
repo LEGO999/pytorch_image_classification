@@ -6,6 +6,7 @@ import torch
 import yacs.config
 
 
+# -> function annotation, describe the type of the return value
 def set_seed(config: yacs.config.CfgNode) -> None:
     seed = config.train.seed
     random.seed(seed)

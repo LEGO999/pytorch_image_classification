@@ -4,6 +4,7 @@ import yacs.config
 
 
 def onehot_encoding(label: torch.Tensor, n_classes: int) -> torch.Tensor:
+    # transform sparse label into one-hot coding label
     return torch.zeros(label.size(0), n_classes).to(label.device).scatter_(
         1, label.view(-1, 1), 1)
 
@@ -35,6 +36,7 @@ class LabelSmoothingLoss:
 
         onehot = onehot_encoding(
             targets, self.n_classes).type_as(predictions).to(device)
+        # fixed smoothing for the positive class and negative classes
         targets = onehot * (1 - self.epsilon) + torch.ones_like(onehot).to(
             device) * self.epsilon / self.n_classes
         loss = cross_entropy_loss(predictions, targets, self.reduction)

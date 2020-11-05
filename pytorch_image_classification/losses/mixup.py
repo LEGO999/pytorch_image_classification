@@ -8,6 +8,7 @@ class MixupLoss:
     def __init__(self, reduction: str):
         self.loss_func = nn.CrossEntropyLoss(reduction=reduction)
 
+    # When Mixup loss is used, a coefficient lam(lambda) should also be provided in the target
     def __call__(
             self, predictions: torch.Tensor,
             targets: Tuple[torch.Tensor, torch.Tensor, float]) -> torch.Tensor:

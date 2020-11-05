@@ -5,6 +5,7 @@ import yacs.config
 
 
 class DummyWriter(SummaryWriter):
+    # A fake summary writer
     def __init__(self):
         pass
 
@@ -164,6 +165,8 @@ def create_tensorboard_writer(config: yacs.config.CfgNode,
         if config.train.start_epoch == 0:
             return SummaryWriter(output_dir.as_posix())
         else:
+            # when logging crashes at T+X, and we resume logging and training at step T. Any steps larger or equal to
+            # purge step T will be purged(cleaned)
             return SummaryWriter(output_dir.as_posix(), purge_step=purge_step)
     else:
         return DummyWriter()

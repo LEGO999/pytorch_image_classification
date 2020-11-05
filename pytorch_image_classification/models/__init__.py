@@ -7,6 +7,7 @@ import yacs.config
 
 
 def create_model(config: yacs.config.CfgNode) -> nn.Module:
+    # import module under the specified path and load the config into the network
     module = importlib.import_module(
         'pytorch_image_classification.models'
         f'.{config.model.type}.{config.model.name}')

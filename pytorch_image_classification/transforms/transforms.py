@@ -66,6 +66,8 @@ class Resize:
 
 
 class ToTensor:
+    # Union[x, y] == either x or y, which is suitable for function annotation to describe multiple possibilities of
+    # input type and output type
     def __call__(
         self, data: Union[np.ndarray, Tuple[np.ndarray, ...]]
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:

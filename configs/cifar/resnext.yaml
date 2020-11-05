@@ -28,7 +28,7 @@ train:
   use_tensorboard: True
   distributed: False
   dataloader:
-    num_workers: 2
+    num_workers: 4
     drop_last: True
     pin_memory: False
 validation:

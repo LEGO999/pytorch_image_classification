@@ -58,6 +58,7 @@ def create_transform(config: yacs.config.CfgNode, is_train: bool) -> Callable:
 
 def create_cifar_transform(config: yacs.config.CfgNode,
                            is_train: bool) -> Callable:
+    # for non-training process, only normalized Tensor will provided.
     mean, std = _get_dataset_stats(config)
     if is_train:
         transforms = []

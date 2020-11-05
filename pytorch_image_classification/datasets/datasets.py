@@ -34,12 +34,16 @@ def create_dataset(config: yacs.config.CfgNode,
             'MNIST',
             'FashionMNIST',
             'KMNIST',
-    ]:
+    ]:  # getattr(name, attribute) get the named attribute from the object, which is equivalent to create
+        # an alias of the callable dataset for efficient configuration
         module = getattr(torchvision.datasets, config.dataset.name)
         if is_train:
+            # use test set for validation
             if config.train.use_test_as_val:
+                # The returned value will be a composed transform
                 train_transform = create_transform(config, is_train=True)
                 val_transform = create_transform(config, is_train=False)
+                # efficient configuration
                 train_dataset = module(config.dataset.dataset_dir,
                                        train=is_train,
                                        transform=train_transform,
@@ -50,6 +54,7 @@ def create_dataset(config: yacs.config.CfgNode,
                                       download=True)
                 return train_dataset, test_dataset
             else:
+                # split training set into training and validation
                 dataset = module(config.dataset.dataset_dir,
                                  train=is_train,
                                  transform=None,
@@ -61,7 +66,7 @@ def create_dataset(config: yacs.config.CfgNode,
                 lengths = [train_num, val_num]
                 train_subset, val_subset = torch.utils.data.dataset.random_split(
                     dataset, lengths)
-
+                # After splitting, transform will be executed.
                 train_transform = create_transform(config, is_train=True)
                 val_transform = create_transform(config, is_train=False)
                 train_dataset = SubsetDataset(train_subset, train_transform)

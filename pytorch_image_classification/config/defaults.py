@@ -109,6 +109,7 @@ config.train.gradient_clip = 0.0
 config.train.start_epoch = 0
 config.train.seed = 0
 config.train.val_first = True
+# validate model after every x epochs
 config.train.val_period = 1
 config.train.val_ratio = 0.0
 config.train.use_test_as_val = True
@@ -186,6 +187,7 @@ config.augmentation.use_random_crop = True
 config.augmentation.use_random_horizontal_flip = True
 config.augmentation.use_cutout = False
 config.augmentation.use_random_erasing = False
+# dual_cut_out, mixup, ricap and cutmix are mutual excluded.
 config.augmentation.use_dual_cutout = False
 config.augmentation.use_mixup = False
 config.augmentation.use_ricap = False

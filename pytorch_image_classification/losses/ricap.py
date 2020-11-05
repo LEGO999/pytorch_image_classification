@@ -12,6 +12,7 @@ class RICAPLoss:
             self, predictions: torch.Tensor,
             targets: Tuple[List[torch.Tensor], List[float]]) -> torch.Tensor:
         target_list, weights = targets
+        # combination from different predictions and their individual weight
         return sum([
             weight * self.loss_func(predictions, targets)
             for targets, weight in zip(target_list, weights)

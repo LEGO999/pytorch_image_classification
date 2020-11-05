@@ -27,8 +27,10 @@ def create_dataloader(
             val_sampler = torch.utils.data.distributed.DistributedSampler(
                 val_dataset)
         else:
+            # RandomSampler: sampler with shuffling
             train_sampler = torch.utils.data.sampler.RandomSampler(
                 train_dataset, replacement=False)
+            # SequentialSampler: sampler without shuffling
             val_sampler = torch.utils.data.sampler.SequentialSampler(
                 val_dataset)
 

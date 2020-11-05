@@ -29,7 +29,7 @@ train:
   dataloader:
     num_workers: 2
     drop_last: True
-    pin_memory: False
+    pin_memory: True
 validation:
   batch_size: 256
   dataloader:
@@ -59,7 +59,7 @@ augmentation:
     prob: 0.5
 tensorboard:
   train_images: False
-  val_images: False
+  val_images: True
   model_params: False
 
 

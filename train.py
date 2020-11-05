@@ -11,6 +11,8 @@ import torch.nn as nn
 import torch.distributed as dist
 import torchvision
 
+
+# fvcore provides common and essential functionality among FAIR computer vision projects
 from fvcore.common.checkpoint import Checkpointer
 
 from pytorch_image_classification import (
@@ -116,6 +118,7 @@ def train(epoch, config, model, optimizer, scheduler, loss_func, train_loader,
     acc5_meter = AverageMeter()
     start = time.time()
     for step, (data, targets) in enumerate(train_loader):
+        # every step is an iteration
         step += 1
         global_step += 1
 
@@ -128,6 +131,8 @@ def train(epoch, config, model, optimizer, scheduler, loss_func, train_loader,
 
         data = data.to(device,
                        non_blocking=config.train.dataloader.non_blocking)
+        # Because target is not also pure single target(label), when data augmentation like mixup is deployed,
+        # multiple labels could occur and need to be sent to device separately.
         targets = send_targets_to_device(config, targets, device)
 
         data_chunks, target_chunks = subdivide_batch(config, data, targets)
@@ -148,15 +153,20 @@ def train(epoch, config, model, optimizer, scheduler, loss_func, train_loader,
             outputs.append(output_chunk)
 
             loss = loss_func(output_chunk, target_chunk)
+            # Loss is used for calculating and accumulating the gradients.
+            # But losses is a list containing all losses but not for gradients.
             losses.append(loss)
             if config.device != 'cpu':
                 with apex.amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
                 loss.backward()
+        #  concatenating all chunks into one piece.
         outputs = torch.cat(outputs)
 
         if config.train.gradient_clip > 0:
+            # If norm of gradients higher than the specified value in the config,
+            # scale the gradient to the specified gradient norm value.
             if config.device != 'cpu':
                 torch.nn.utils.clip_grad_norm_(
                     apex.amp.master_params(optimizer),
@@ -166,7 +176,9 @@ def train(epoch, config, model, optimizer, scheduler, loss_func, train_loader,
                                                config.train.gradient_clip)
         if config.train.subdivision > 1:
             for param in model.parameters():
+                # the final gradients should be divided(averaged) by the number of the subdivision
                 param.grad.data.div_(config.train.subdivision)
+        # optimizing gradients
         optimizer.step()
 
         acc1, acc5 = compute_accuracy(config,
@@ -246,6 +258,8 @@ def validate(epoch, config, model, loss_func, val_loader, logger,
 
     model.eval()
 
+    # There is no tf.keras.metrics.Mean() in PyTorch, so we need to write our own Meter
+    # Or we could use tnt(torchnet) to replace the current model
     loss_meter = AverageMeter()
     acc1_meter = AverageMeter()
     acc5_meter = AverageMeter()
@@ -258,6 +272,7 @@ def validate(epoch, config, model, loss_func, val_loader, logger,
                         image = torchvision.utils.make_grid(data,
                                                             normalize=True,
                                                             scale_each=True)
+                        # save the image for single first batch
                         tensorboard_writer.add_image('Val/Image', image, epoch)
 
             data = data.to(
@@ -314,6 +329,7 @@ def validate(epoch, config, model, loss_func, val_loader, logger,
         tensorboard_writer.add_scalar('Val/Acc1', acc1_meter.avg, epoch)
         tensorboard_writer.add_scalar('Val/Acc5', acc5_meter.avg, epoch)
         tensorboard_writer.add_scalar('Val/Time', elapsed, epoch)
+        # visualizing all weights in model
         if config.tensorboard.model_params:
             for name, param in model.named_parameters():
                 tensorboard_writer.add_histogram(name, param, epoch)
@@ -327,6 +343,8 @@ def main():
     set_seed(config)
     setup_cudnn(config)
 
+    # np.iinfo(np_type).max: machine limit (upper bound) of the this type
+    # every epoch will have a specific epoch seed
     epoch_seeds = np.random.randint(np.iinfo(np.int32).max // 2,
                                     size=config.scheduler.epochs)
 
@@ -344,6 +362,8 @@ def main():
                 f'Output directory `{output_dir.as_posix()}` already exists')
         output_dir.mkdir(exist_ok=True, parents=True)
         if not config.train.resume:
+            # if we need to resume training, current config, environment info and the difference between
+            # the current and default config will be saved.
             save_config(config, output_dir / 'config.yaml')
             save_config(get_env_info(config), output_dir / 'env.yaml')
             diff = find_config_diff(config)
@@ -360,19 +380,25 @@ def main():
     train_loader, val_loader = create_dataloader(config, is_train=True)
 
     model = create_model(config)
+    # Multiply-and-ACcumulate(MAC): ops
     macs, n_params = count_op(config, model)
     logger.info(f'MACs   : {macs}')
     logger.info(f'#params: {n_params}')
-
+    # creating optimizer: SGD with nesterov momentum, adam, amsgrad, adabound, adaboundw or lars.
     optimizer = create_optimizer(config, model)
+    # some AMP(Automatic mixed precision) settings
     if config.device != 'cpu':
         model, optimizer = apex.amp.initialize(
             model, optimizer, opt_level=config.train.precision)
+    # create data parallel model or distributed data
     model = apply_data_parallel_wrapper(config, model)
 
+    # set up scheduler and warm up scheduler
+    # steps per epoch: how many batches in an epoch
     scheduler = create_scheduler(config,
                                  optimizer,
                                  steps_per_epoch=len(train_loader))
+    # create checkponit, do ot use torch's default checkpoint saver because it can't save scheduler
     checkpointer = Checkpointer(model,
                                 optimizer=optimizer,
                                 scheduler=scheduler,
@@ -380,7 +406,11 @@ def main():
                                 save_to_disk=get_rank() == 0)
 
     start_epoch = config.train.start_epoch
+    # last_epoch is used to resume training, here normally we should start from config.train.start_epoch
     scheduler.last_epoch = start_epoch
+    # The resume training supports multiple modes:
+    # 1. resume = True, loading model from the last training checkpoint and following the global step and config
+    # 2. resume = False, training checkpoint is specified, load checkpoint to cpu
     if config.train.resume:
         checkpoint_config = checkpointer.resume_or_load('', resume=True)
         global_step = checkpoint_config['global_step']
@@ -395,7 +425,9 @@ def main():
             model.module.load_state_dict(checkpoint['model'])
         else:
             model.load_state_dict(checkpoint['model'])
-
+    # Two TensorBoard writer:
+    # First writer for this run of training(maybe it's resuming training)
+    # Second writer follows the global steps and records the global run.
     if get_rank() == 0 and config.train.use_tensorboard:
         tensorboard_writer = create_tensorboard_writer(
             config, output_dir, purge_step=config.train.start_epoch + 1)
@@ -409,6 +441,7 @@ def main():
 
     if (config.train.val_period > 0 and start_epoch == 0
             and config.train.val_first):
+        # validate the model from epoch 0
         validate(0, config, model, val_loss, val_loader, logger,
                  tensorboard_writer)
 

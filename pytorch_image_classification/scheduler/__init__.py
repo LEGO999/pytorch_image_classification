@@ -1,6 +1,7 @@
 import torch
 
 from .combined_scheduler import CombinedScheduler
+# The schedulers are simply some objects calculating learning with respect to steps
 from .components import (
     ConstantScheduler,
     CosineScheduler,
@@ -66,6 +67,7 @@ def create_scheduler(config, optimizer, steps_per_epoch):
     main_scheduler = _create_main_scheduler(config, main_epochs)
 
     scheduler_func = CombinedScheduler([warmup_scheduler, main_scheduler])
+    # scheduler's step is epoch, so we need to multiply the steps per epoch with epoch.
     scheduler_func.multiply_steps(steps_per_epoch)
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, scheduler_func)

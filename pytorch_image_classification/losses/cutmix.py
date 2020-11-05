@@ -11,6 +11,7 @@ class CutMixLoss:
     def __call__(
             self, predictions: torch.Tensor,
             targets: Tuple[torch.Tensor, torch.Tensor, float]) -> torch.Tensor:
+        # A mixture of Mixup and Cutout
         targets1, targets2, lam = targets
         return lam * self.criterion(predictions, targets1) + (
             1 - lam) * self.criterion(predictions, targets2)

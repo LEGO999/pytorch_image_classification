@@ -37,6 +37,7 @@ class Network(nn.Module):
 
         # initialize weights
         initializer = create_initializer(config.model.init_mode)
+        # recursively apply the functions to all modules and their children
         self.apply(initializer)
 
     def _make_stage(self, in_channels, out_channels, n_blocks):
@@ -58,7 +59,10 @@ class Network(nn.Module):
                     stride=1,
                     padding=1,
                 )
+            # add the above defined module to sequential model
+            # f-string: new way of formatting string
             stage.add_module(f'conv{index}', conv)
+            # add batch_norm after multiple conv layers
             if self.use_bn:
                 stage.add_module(f'bn{index}', nn.BatchNorm2d(out_channels))
             stage.add_module(f'relu{index}', nn.ReLU(inplace=True))
